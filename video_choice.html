@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>选择视频</title>
+</head>
+<body>
+  <h2>请选择一个视频进行观看</h2>
+  <button onclick="chooseVideo('video1.mp4')">视频 1</button>
+  <button onclick="chooseVideo('video2.mp4')">视频 2</button>
+  <button onclick="chooseVideo('video3.mp4')">视频 3</button>
+  <button onclick="chooseVideo('video4.mp4')">视频 4</button>
+
+  <!-- 隐藏按钮：研究者清除缓存 -->
+  <button id="clearCacheBtn" style="display:none;" onclick="clearCache()">清除缓存(调试用)</button>
+
+  <script>
+    // 如果有旧记录，询问是否重新选择
+    if (localStorage.getItem('choiceData')) {
+      const confirmNew = confirm("检测到上次的选择，是否要重新选择视频？\n点击“确定”重新选择，点击“取消”继续上次视频。");
+      if (!confirmNew) {
+        window.location.href = 'video_play.html'; // 继续播放
+      } else {
+        localStorage.clear(); // 清除记录，重新选择
+      }
+    }
+
+    function chooseVideo(videoName) {
+      const data = {
+        participant_id: Date.now(),
+        chosen_video: videoName,
+        choice_time: new Date().toISOString()
+      };
+      localStorage.setItem('choiceData', JSON.stringify(data));
+      window.location.href = 'video_play.html';
+    }
+
+    // 清除缓存（研究者用）
+    function clearCache() {
+      localStorage.clear();
+      alert('缓存已清除，可以重新选择视频');
+      window.location.reload();
+    }
+  </script>
+</body>
+</html>

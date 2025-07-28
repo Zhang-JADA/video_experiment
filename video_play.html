@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>观看视频</title>
+</head>
+<body>
+  <video id="videoPlayer" width="640" controls>
+    <source src="" type="video/mp4">
+    你的浏览器不支持视频播放。
+  </video>
+
+  <button onclick="exportLog()">下载日志数据</button>
+
+  <!-- 隐藏按钮：研究者清除缓存 -->
+  <button id="clearCacheBtn" style="display:none;" onclick="clearCache()">清除缓存(调试用)</button>
+
+  <script>
+    // 禁止返回选择页面
+    if (window.history && window.history.pushState) {
+      window.history.pushState(null, null, window.location.href);
+      window.onpopstate = function () {
+        window.history.go(1);
+      };
+    }
+
+    const choiceData = JSON.parse(localStorage.getItem('choiceData'));
+    const video = document.getElementById('videoPlayer');
+    video.querySelector('source').src = choiceData.chosen_video;
+    video.load();
+
+    let startTime, endTime;
+    let pauseCount = 0;
+    let seekCount = 0;
+    let maxWatchTime = 0;
+
+    // 记录播放开始时间
+    video.addEventListener('play', () => {
+      if (!startTime) startTime = new Date();
+    });
+
+    // 记录暂停次数
+    video.addEventListener('pause', () => {
+      pauseCount++;
+    });
+
+    // 记录快进/后退行为
+    video.addEventListener('seeked', () => {
+      seekCount++;
+    });
+
+    // 实时更新观看最大进度
+    video.addEventListener('timeupdate', () => {
+      if (video.currentTime > maxWatchTime) {
+        maxWatchTime = video.currentTime;
+      }
+    });
+
+    // 记录结束时间
+    video.addEventListener('ended', () => {
+      endTime = new Date();
+    });
+
+    // 导出日志
+    function exportLog() {
+      const watchPercentage = video.duration ? ((maxWatchTime / video.duration) * 100).toFixed(2) + '%' : null;
+
+      const logData = {
+        ...choiceData,
+        video_start_time: startTime ? startTime.toISOString() : null,
+        video_end_time: endTime ? endTime.toISOString() : null,
+        watch_duration: endTime && startTime ? Math.round((endTime - startTime) / 1000) : null,
+        video_completed: video.ended,
+        pause_count: pauseCount,
+        seek_count: seekCount,
+        watch_percentage: watchPercentage
+      };
+
+      const csv = Object.keys(logData).join(",") + "\n" + Object.values(logData).join(",");
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'log_data.csv';
+      link.click();
+    }
+
+    // 清除缓存（研究者用）
+    function clearCache() {
+      localStorage.clear();
+      alert('缓存已清除，可以重新选择视频');
+      window.location.href = 'video_choice.html';
+    }
+  </script>
+</body>
+</html>

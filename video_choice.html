@@ -1,31 +1,37 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Select a Video</title>
+    <meta charset="UTF-8">
+    <title>Select a Video</title>
 </head>
 <body>
-  <h2>Please select a video to watch</h2>
-  <button onclick="chooseVideo('video1.mp4')">Video 1</button>
-  <button onclick="chooseVideo('video2.mp4')">Video 2</button>
-  <button onclick="chooseVideo('video3.mp4')">Video 3</button>
-  <button onclick="chooseVideo('video4.mp4')">Video 4</button>
+    <h2>Please select a video to watch</h2>
+    <button onclick="chooseVideo('video1.mp4')">Video 1</button>
+    <button onclick="chooseVideo('video2.mp4')">Video 2</button>
+    <button onclick="chooseVideo('video3.mp4')">Video 3</button>
+    <button onclick="chooseVideo('video4.mp4')">Video 4</button>
 
-  <script>
-    // Redirect directly if already chosen
-    if (localStorage.getItem('choiceData')) {
-      window.location.href = 'video_play.html';
-    }
+    <hr>
+    <!-- 研究者用的清缓存按钮 -->
+    <button onclick="clearCache()">Clear Cache</button>
 
-    function chooseVideo(videoName) {
-      const data = {
-        participant_id: Date.now(),  // timestamp as ID
+<script>
+function chooseVideo(videoName) {
+    // 每次选择都覆盖之前的 choiceData
+    const data = {
+        participant_id: Date.now(),
         chosen_video: videoName,
         choice_time: new Date().toISOString()
-      };
-      localStorage.setItem('choiceData', JSON.stringify(data));
-      window.location.href = 'video_play.html';
-    }
-  </script>
+    };
+    localStorage.setItem('choiceData', JSON.stringify(data));
+    window.location.href = 'video_play.html';
+}
+
+// 清除本地缓存
+function clearCache() {
+    localStorage.clear();
+    alert("Cache cleared. You can start fresh.");
+}
+</script>
 </body>
 </html>

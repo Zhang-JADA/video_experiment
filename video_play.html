@@ -1,92 +1,105 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Watch Video</title>
+    <meta charset="UTF-8">
+    <title>Watch Video</title>
 </head>
 <body>
-  <video id="videoPlayer" width="640" controls>
-    <source src="" type="video/mp4">
-    Your browser does not support video playback.
-  </video>
+    <video id="videoPlayer" width="640" controls>
+        <source src="" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
 
-  <script>
-    // Prevent going back to the choice page
-    if (window.history && window.history.pushState) {
-      window.history.pushState(null, null, window.location.href);
-      window.onpopstate = function () {
-        window.history.go(1);
-      };
-    }
+    <button onclick="exportLog()">Download Log (Backup)</button>
 
-    // Load chosen video data
-    const choiceData = JSON.parse(localStorage.getItem('choiceData'));
-    const video = document.getElementById('videoPlayer');
-    video.querySelector('source').src = choiceData.chosen_video;
-    video.load();
+    <script>
+        // 禁止返回选择页面
+        if (window.history && window.history.pushState) {
+            window.history.pushState(null, null, window.location.href);
+            window.onpopstate = function () {
+                window.history.go(1);
+            };
+        }
 
-    // Variables for logging
-    let startTime, endTime;
-    let pauseCount = 0;
-    let seekCount = 0;
-    let maxWatchTime = 0;
+        // 从 localStorage 读取选择数据
+        const choiceData = JSON.parse(localStorage.getItem('choiceData'));
+        const video = document.getElementById('videoPlayer');
+        video.querySelector('source').src = choiceData.chosen_video;
+        video.load();
 
-    video.addEventListener('play', () => {
-      if (!startTime) startTime = new Date();
-    });
+        // 定义变量
+        let startTime, endTime;
+        let pauseCount = 0;
+        let seekCount = 0;
 
-    video.addEventListener('pause', () => {
-      pauseCount++;
-    });
+        // 监听播放事件
+        video.addEventListener('play', () => {
+            if (!startTime) startTime = new Date();
+        });
 
-    video.addEventListener('seeked', () => {
-      seekCount++;
-    });
+        // 监听暂停事件
+        video.addEventListener('pause', () => {
+            pauseCount++;
+        });
 
-    video.addEventListener('timeupdate', () => {
-      if (video.currentTime > maxWatchTime) {
-        maxWatchTime = video.currentTime;
-      }
-    });
+        // 监听拖动事件
+        video.addEventListener('seeking', () => {
+            seekCount++;
+        });
 
-    video.addEventListener('ended', () => {
-      endTime = new Date();
-      uploadLog();
-    });
+        // 监听播放完成事件
+        video.addEventListener('ended', () => {
+            endTime = new Date();
+            sendLogToGoogleSheet();
+        });
 
-    window.addEventListener('beforeunload', () => {
-      if (!endTime) endTime = new Date();
-      uploadLog();
-    });
+        // 上传日志到 Google Sheet
+        function sendLogToGoogleSheet() {
+            const logData = {
+                participant_id: choiceData.participant_id,
+                chosen_video: choiceData.chosen_video,
+                choice_time: choiceData.choice_time,
+                video_start_time: startTime ? startTime.toISOString() : null,
+                video_end_time: endTime ? endTime.toISOString() : null,
+                watch_duration: endTime && startTime ? Math.round((endTime - startTime) / 1000) : null,
+                video_completed: video.ended,
+                pause_count: pauseCount,
+                seek_count: seekCount,
+                watch_percentage: video.duration ? Math.round((video.currentTime / video.duration) * 100) : 0
+            };
 
-    // Upload log to Google Sheets
-    function uploadLog() {
-      const watchPercentage = video.duration ? ((maxWatchTime / video.duration) * 100).toFixed(2) + '%' : null;
+            fetch("https://script.google.com/macros/s/AKfycbzwx93JeHyetigJnZhfMlue4rswP7xcl_IomOsA7faBV5n3CXGw2jygRkqm-Kllq8XI/exec", {
+                method: "POST",
+                body: JSON.stringify({ contents: logData })
+            }).then(response => {
+                console.log("Data sent to Google Sheet");
+            }).catch(error => {
+                console.error("Error sending data:", error);
+            });
+        }
 
-      const logData = {
-        ...choiceData,
-        video_start_time: startTime ? startTime.toISOString() : null,
-        video_end_time: endTime ? endTime.toISOString() : null,
-        watch_duration: endTime && startTime ? Math.round((endTime - startTime) / 1000) : null,
-        video_completed: video.ended,
-        pause_count: pauseCount,
-        seek_count: seekCount,
-        watch_percentage: watchPercentage
-      };
+        // 本地备份下载按钮
+        function exportLog() {
+            const logData = {
+                participant_id: choiceData.participant_id,
+                chosen_video: choiceData.chosen_video,
+                choice_time: choiceData.choice_time,
+                video_start_time: startTime ? startTime.toISOString() : null,
+                video_end_time: endTime ? endTime.toISOString() : null,
+                watch_duration: endTime && startTime ? Math.round((endTime - startTime) / 1000) : null,
+                video_completed: video.ended,
+                pause_count: pauseCount,
+                seek_count: seekCount,
+                watch_percentage: video.duration ? Math.round((video.currentTime / video.duration) * 100) : 0
+            };
 
-      fetch("https://script.google.com/macros/s/AKfycbzwx93JeHyetigJnZhfMlue4rswP7xcl_IomOsA7faBV5n3CXGw2jygRkqm-Kllq8XI/exec", {
-        method: "POST",
-        body: JSON.stringify(logData),
-        headers: { "Content-Type": "application/json" }
-      })
-      .then(response => response.text())
-      .then(data => {
-        console.log("Log successfully uploaded to Google Sheets");
-      })
-      .catch(error => {
-        console.error("Upload failed:", error);
-      });
-    }
-  </script>
+            const csv = Object.keys(logData).join(",") + "\n" + Object.values(logData).join(",");
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'log_data.csv';
+            link.click();
+        }
+    </script>
 </body>
 </html>
